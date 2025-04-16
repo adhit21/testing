@@ -24,7 +24,7 @@ jobs:
       - name: Install Dependencies
         run: |
           brew install llvm@16 cmake ninja pkg-config icu4c capstone
-          pip3 install pyelftools requests
+          pip3 install pyelftools requests --break-system-packages
 
       - name: Clone Blutter Repo
         run: git clone https://github.com/worawit/blutter.git
