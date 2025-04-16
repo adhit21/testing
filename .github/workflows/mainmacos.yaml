@@ -1,0 +1,57 @@
+name: Blutter Extractor mac os
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL file yang ingin diunduh'
+        required: true
+      nama_file:
+        description: 'Nama file untuk hasil ZIP release'
+        required: true
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    env:
+      LLVM_DIR: /opt/homebrew/opt/llvm@16
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          brew install llvm@16 cmake ninja pkg-config icu4c capstone
+          pip3 install pyelftools requests
+
+      - name: Clone Blutter Repo
+        run: git clone https://github.com/worawit/blutter.git
+
+      - name: Download File dari URL
+        run: |
+          curl "${{ github.event.inputs.url }}" -L -o "${{ github.event.inputs.nama_file }}.zip"
+
+      - name: Setup Direktori & Unzip
+        run: |
+          cd blutter
+          mkdir -p arm64-v8a
+          unzip "../${{ github.event.inputs.nama_file }}.zip" -d arm64-v8a
+
+      - name: Jalankan Blutter
+        run: |
+          cd blutter
+          python3 blutter.py arm64-v8a out_dir
+
+      - name: Zip hasil out_dir
+        run: |
+          cd blutter
+          zip -r "${{ github.event.inputs.nama_file }}.zip" out_dir
+
+      - name: Upload ke GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: blutter/${{ github.event.inputs.nama_file }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
