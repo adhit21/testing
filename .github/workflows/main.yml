@@ -1,0 +1,57 @@
+name: Blutter Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL file untuk diproses'
+        required: true
+      output_name:
+        description: 'Nama file output (tanpa ekstensi .zip)'
+        required: true
+
+jobs:
+  blutter-job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pyelftools python3-requests git cmake ninja-build \
+          build-essential pkg-config libicu-dev libcapstone-dev unzip zip
+
+    - name: Clone blutter repo
+      run: git clone https://github.com/worawit/blutter.git
+
+    - name: Download file
+      run: |
+        curl -L "${{ github.event.inputs.download_url }}" -o input_file.zip
+
+    - name: Prepare directory
+      run: |
+        cd blutter
+        mkdir -p arm64-v8a
+        unzip ../input_file.zip -d arm64-v8a
+
+    - name: Run blutter.py
+      run: |
+        cd blutter
+        python3 blutter.py arm64-v8a.zip out_dir || true  # pakai || true kalau tidak ingin gagal saat error
+
+    - name: Zip hasil output
+      run: |
+        cd blutter
+        zip -r "${{ github.event.inputs.output_name }}.zip" out_dir
+
+    - name: Upload ke GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "release-${{ github.run_number }}"
+        name: "Release ${{ github.run_number }}"
+        files: blutter/${{ github.event.inputs.output_name }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
