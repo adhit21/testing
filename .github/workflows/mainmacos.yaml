@@ -49,9 +49,11 @@ jobs:
           cd blutter
           zip -r "${{ github.event.inputs.nama_file }}.zip" out_dir
 
-      - name: Upload ke GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload ke GitHub Releases
+        uses: softprops/action-gh-release@v1
         with:
-          files: blutter/${{ github.event.inputs.nama_file }}.zip
+          tag_name: "release-${{ github.run_number }}"
+          name: "Release ${{ github.run_number }}"
+          files: blutter/${{ github.event.inputs.output_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
