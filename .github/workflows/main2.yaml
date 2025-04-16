@@ -41,11 +41,13 @@ jobs:
     - name: Run blutter.py
       run: |
         cd blutter
-        python3 blutter.py arm64-v8a.zip out_dir || true  # pakai || true kalau tidak ingin gagal saat error
+        ls
+        python3 blutter.py arm64-v8a out_dir || true  # pakai || true kalau tidak ingin gagal saat error
 
     - name: Zip hasil output
       run: |
         cd blutter
+        ls
         zip -r "${{ github.event.inputs.output_name }}.zip" out_dir
 
     - name: Upload ke GitHub Releases
