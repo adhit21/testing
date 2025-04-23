@@ -32,8 +32,13 @@ on:
         required: false
         default: false
         type: boolean
-      scatter_txt:
-        description: 'Include scatter.txt?'
+      lk_img:
+        description: 'Include lk.img?'
+        required: false
+        default: false
+        type: boolean
+      recovery_img:
+        description: 'Include recovery.img?'
         required: false
         default: false
         type: boolean
