@@ -1,4 +1,4 @@
-name: MIUI Firmware Extractor
+name: MIUI Firmware Extractor v2
 
 on:
   workflow_dispatch:
