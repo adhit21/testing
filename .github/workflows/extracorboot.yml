@@ -1,0 +1,48 @@
+name: miui firmware extractorr
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL file untuk diproses'
+        required: true
+      output_name:
+        description: 'pilih system.img,boot.img,logo.img'
+        required: true
+
+jobs:
+  blutter-job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+
+    - name: Download file
+      run: |
+        neofetch
+        curl -L "${{ github.event.inputs.download_url }}" -o input_file.zip
+
+    - name: Prepare directory
+      run: |
+        
+        unzip ../input_file.zip -d output
+
+    - name: Zip hasil output
+      run: |
+      
+        ls
+        zip -r "${{ github.event.inputs.output_name }}.zip" out_dir
+
+    - name: Upload ke GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "release-${{ github.run_number }}"
+        name: "Release ${{ github.run_number }}"
+        files: blutter/${{ github.event.inputs.output_name }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
