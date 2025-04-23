@@ -47,11 +47,13 @@ jobs:
 
     - name: Download file
       run: |
-        curl -L "${{ github.event.inputs.download_url }}" -o input_file.tgz
+        curl -L "${{ github.event.inputs.download_url }}" -o hasil.tgz
 
     - name: Extract files
       run: |
-        tar -xvzf input_file.tgz -C output
+        mkdir output
+        ls
+        tar -xvzf hasil.tgz -C output
 
     - name: Package image file
       run: |
