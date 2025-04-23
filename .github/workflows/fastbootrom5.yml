@@ -1,4 +1,4 @@
-name: MIUI Firmware Fastboot Extractor v5
+name: MIUI Firmware Mediatek Fastboot Extractor
 
 on:
   workflow_dispatch:
@@ -43,7 +43,7 @@ on:
         default: false
         type: boolean
       scatter_txt:
-        description: 'Include scatter.txt?'
+        description: 'Include scatter file? (will match any *scatter*)'
         required: false
         default: false
         type: boolean
@@ -87,7 +87,7 @@ jobs:
         [[ "${{ github.event.inputs.dtbo_img }}" == 'true' ]] && NAMES+=("dtbo.img")
         [[ "${{ github.event.inputs.vbmeta_img }}" == 'true' ]] && NAMES+=("vbmeta.img")
         [[ "${{ github.event.inputs.lk_img }}" == 'true' ]] && NAMES+=("lk.img")
-        [[ "${{ github.event.inputs.revovery_img }}" == 'true' ]] && NAMES+=("recovery.img")
+        [[ "${{ github.event.inputs.recovery_img }}" == 'true' ]] && NAMES+=("recovery.img")
         [[ "${{ github.event.inputs.scatter_txt }}" == 'true' ]] && NAMES+=("scatter.txt")
         if [ ${#NAMES[@]} -eq 0 ]; then
           echo "::error::Tidak ada file yang dipilih untuk diproses."
@@ -124,7 +124,12 @@ jobs:
         # Baca daftar nama yang hilang ke array
         mapfile -t MISSING <<< "${{ steps.check_assets.outputs.missing_names }}"
         for NAME in "${MISSING[@]}"; do
-          FILE_PATH=$(find output -type f -name "$NAME" | head -n1)
+          # Pencarian scatter khusus
+          if [[ "$NAME" == "scatter.txt" ]]; then
+            FILE_PATH=$(find output -type f -iname "*scatter*" | head -n1)
+          else
+            FILE_PATH=$(find output -type f -name "$NAME" | head -n1)
+          fi
           if [ ! -f "$FILE_PATH" ]; then
             echo "::error::File $NAME tidak ditemukan dalam firmware"
             exit 1
