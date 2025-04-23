@@ -11,8 +11,8 @@ on:
         type: choice
         required: true
         options:
-          - system.img
           - boot.img
+          - system.img
           - logo.bin
           - dtbo.img
           - vbmeta.img
