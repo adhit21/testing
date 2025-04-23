@@ -121,10 +121,8 @@ jobs:
     - name: Package missing assets
       id: package_assets
       run: |
-        # Baca daftar nama yang hilang ke array
         mapfile -t MISSING <<< "${{ steps.check_assets.outputs.missing_names }}"
         for NAME in "${MISSING[@]}"; do
-          # Pencarian scatter khusus
           if [[ "$NAME" == "scatter.txt" ]]; then
             FILE_PATH=$(find output -type f -iname "*scatter*" | head -n1)
           else
@@ -147,9 +145,11 @@ jobs:
       with:
         tag_name: "${{ steps.extract_meta.outputs.codename }}-${{ steps.extract_meta.outputs.version }}"
         name: "${{ steps.extract_meta.outputs.codename }} ${{ steps.extract_meta.outputs.version }}"
+        body: |
+          **firmware for ${{ steps.extract_meta.outputs.codename }} ${{ steps.extract_meta.outputs.version }}**
         files: |
           ${{ steps.package_assets.outputs.upload_files }}
         draft: false
         prerelease: false
-        generate_release_notes: true
+        generate_release_notes: false
         create_release: true
