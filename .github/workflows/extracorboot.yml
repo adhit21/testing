@@ -31,6 +31,20 @@ jobs:
         sudo apt update
         sudo apt install -y unzip zip curl
 
+    - name: Extract version from URL
+      id: extract_version
+      run: |
+        URL="${{ github.event.inputs.download_url }}"
+        VERSION=$(echo "$URL" | sed -n 's|.*/\(V[^/]*\)/.*|\1|p')
+        
+        if [ -z "$VERSION" ]; then
+          echo "::error::Gagal ekstrak versi dari URL!"
+          exit 1
+        fi
+        
+        echo "Extracted version: $VERSION"
+        echo "::set-output name=version::${VERSION}"
+
     - name: Download file
       run: |
         curl -L "${{ github.event.inputs.download_url }}" -o input_file.zip
@@ -42,11 +56,15 @@ jobs:
     - name: Package image file
       run: |
         FILE_PATH="output/${{ github.event.inputs.output_name }}"
+        OUTPUT_FILE="${{ github.event.inputs.output_name }}_${{ steps.extract_version.outputs.version }}.zip"
+        
         if [ ! -f "$FILE_PATH" ]; then
           echo "::error::File $FILE_PATH tidak ditemukan!"
           exit 1
         fi
-        zip "${{ github.event.inputs.output_name }}.zip" "$FILE_PATH"
+        
+        zip "$OUTPUT_FILE" "$FILE_PATH"
+        echo "OUTPUT_FILE=$OUTPUT_FILE" >> $GITHUB_ENV
 
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
@@ -54,6 +72,6 @@ jobs:
         tag_name: "release-${{ github.run_number }}"
         name: "Release ${{ github.run_number }}"
         files: |
-          ${{ github.event.inputs.output_name }}.zip
+          ${{ env.OUTPUT_FILE }}
       env:
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
