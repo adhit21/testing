@@ -1,4 +1,4 @@
-name: miui firmware extractorr
+name: MIUI Firmware Extractor
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
         required: true
 
 jobs:
-  blutter-job:
+  extract-firmware:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,28 +21,30 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
+        sudo apt install -y unzip zip curl
 
     - name: Download file
       run: |
-        neofetch
         curl -L "${{ github.event.inputs.download_url }}" -o input_file.zip
 
-    - name: Prepare directory
+    - name: Extract files
       run: |
-        
-        unzip ../input_file.zip -d output
+        unzip input_file.zip -d output
 
-    - name: Zip hasil output
+    - name: Package image file
       run: |
-      
-        ls
-        zip -r "${{ github.event.inputs.output_name }}.zip" out_dir
+        if [ ! -f "output/${{ github.event.inputs.output_name }}" ]; then
+          echo "Error: File ${{ github.event.inputs.output_name }} tidak ditemukan!"
+          exit 1
+        fi
+        zip "${{ github.event.inputs.output_name }}.zip" "output/${{ github.event.inputs.output_name }}"
 
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
       with:
         tag_name: "release-${{ github.run_number }}"
         name: "Release ${{ github.run_number }}"
-        files: blutter/${{ github.event.inputs.output_name }}.zip
+        files: |
+          ${{ github.event.inputs.output_name }}.zip
       env:
-        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
