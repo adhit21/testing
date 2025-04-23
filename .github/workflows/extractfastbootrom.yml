@@ -1,4 +1,4 @@
-name: MIUI Firmware Extractor v3
+name: MIUI Firmware fastboot Extractor
 
 on:
   workflow_dispatch:
