@@ -1,0 +1,87 @@
+name: MIUI Firmware fastboot Extractor v3
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL file firmware'
+        required: true
+      output_name:
+        description: 'Pilih jenis image'
+        type: choice
+        required: true
+        options:
+          - boot.img
+          - system.img
+          - logo.bin
+          - dtbo.img
+          - vbmeta.img
+          - scatter.txt
+
+jobs:
+  extract-firmware:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y unzip zip curl tar
+
+    - name: Extract metadata from URL
+      id: extract_meta
+      run: |
+        URL="${{ github.event.inputs.download_url }}"
+        
+        # Ekstrak version
+        VERSION=$(echo "$URL" | sed -n 's|.*/\(V[^/]*\)/.*|\1|p')
+        
+        # Ekstrak codename dengan pattern lebih spesifik
+        CODENAME=$(echo "$URL" | sed -n 's|.*/\(.*\)_global_images.*|\1|p')
+        
+        if [ -z "$VERSION" ] || [ -z "$CODENAME" ]; then
+          echo "::error::Gagal ekstrak metadata dari URL!"
+          exit 1
+        fi
+        
+        echo "::set-output name=version::${VERSION}"
+        echo "::set-output name=codename::${CODENAME}"
+
+    - name: Download file
+      run: |
+        curl -L "${{ github.event.inputs.download_url }}" -o input_file.tgz
+
+    - name: Extract files
+      run: |
+        mkdir -p output
+        tar -xvzf input_file.tgz -C output
+
+    - name: Package image file
+      run: |
+        FILE_PATH=$(find output -type f -name "${{ github.event.inputs.output_name }}" | head -n1)
+        OUTPUT_FILE="${{ github.event.inputs.output_name }}_${{ steps.extract_meta.outputs.version }}.zip"
+        
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "::error::File ${{ github.event.inputs.output_name }} tidak ditemukan!"
+          exit 1
+        fi
+        
+        zip "$OUTPUT_FILE" "$FILE_PATH"
+        echo "OUTPUT_FILE=$OUTPUT_FILE" >> $GITHUB_ENV
+
+    - name: Upload ke GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "${{ steps.extract_meta.outputs.codename }}-${{ steps.extract_meta.outputs.version }}"
+        name: "${{ steps.extract_meta.outputs.codename }} ${{ steps.extract_meta.outputs.version }}"
+        files: |
+          ${{ env.OUTPUT_FILE }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        create_release: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
