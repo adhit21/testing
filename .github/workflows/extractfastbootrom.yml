@@ -54,6 +54,7 @@ jobs:
         mkdir output
         ls
         tar -xvzf hasil.tgz -C output
+        find ./output -type f -name "${{ github.event.inputs.output_name }}" -exec cp -v {} ./hasil/ \;
 
     - name: Package image file
       run: |
