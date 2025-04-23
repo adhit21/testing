@@ -54,11 +54,11 @@ jobs:
         mkdir output
         ls
         tar -xvzf hasil.tgz -C output
-        find ./output -type f -name "${{ github.event.inputs.output_name }}" -exec cp -v {} ./hasil/ \;
 
     - name: Package image file
       run: |
-        FILE_PATH="output/${{ github.event.inputs.output_name }}"
+        FILE_PATH=$(find output -type f -name "${{ github.event.inputs.output_name }}"
+        
         OUTPUT_FILE="${{ github.event.inputs.output_name }}_${{ steps.extract_version.outputs.version }}.zip"
         
         if [ ! -f "$FILE_PATH" ]; then
