@@ -42,6 +42,11 @@ on:
         required: false
         default: false
         type: boolean
+      scatter_txt:
+        description: 'Include scatter.txt?'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   extract-firmware:
@@ -81,6 +86,8 @@ jobs:
         [[ "${{ github.event.inputs.logo_bin }}" == 'true' ]] && NAMES+=("logo.bin")
         [[ "${{ github.event.inputs.dtbo_img }}" == 'true' ]] && NAMES+=("dtbo.img")
         [[ "${{ github.event.inputs.vbmeta_img }}" == 'true' ]] && NAMES+=("vbmeta.img")
+        [[ "${{ github.event.inputs.lk_img }}" == 'true' ]] && NAMES+=("lk.img")
+        [[ "${{ github.event.inputs.revovery_img }}" == 'true' ]] && NAMES+=("recovery.img")
         [[ "${{ github.event.inputs.scatter_txt }}" == 'true' ]] && NAMES+=("scatter.txt")
         if [ ${#NAMES[@]} -eq 0 ]; then
           echo "::error::Tidak ada file yang dipilih untuk diproses."
