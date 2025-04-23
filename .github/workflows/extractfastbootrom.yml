@@ -1,0 +1,77 @@
+name: MIUI Firmware Fastboot Exteactor
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL file firmware'
+        required: true
+      output_name:
+        description: 'Pilih jenis image'
+        type: choice
+        required: true
+        options:
+          - system.img
+          - boot.img
+          - logo.bin
+          - dtbo.img
+          - vbmeta.img
+          - scatter.txt
+
+jobs:
+  extract-firmware:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y unzip zip curl tar
+
+    - name: Extract version from URL
+      id: extract_version
+      run: |
+        URL="${{ github.event.inputs.download_url }}"
+        VERSION=$(echo "$URL" | sed -n 's|.*/\(V[^/]*\)/.*|\1|p')
+        
+        if [ -z "$VERSION" ]; then
+          echo "::error::Gagal ekstrak versi dari URL!"
+          exit 1
+        fi
+        
+        echo "Extracted version: $VERSION"
+        echo "::set-output name=version::${VERSION}"
+
+    - name: Download file
+      run: |
+        curl -L "${{ github.event.inputs.download_url }}" -o input_file.tgz
+
+    - name: Extract files
+      run: |
+        tar -xvzf input_file.tgz -C output
+
+    - name: Package image file
+      run: |
+        FILE_PATH="output/${{ github.event.inputs.output_name }}"
+        OUTPUT_FILE="${{ github.event.inputs.output_name }}_${{ steps.extract_version.outputs.version }}.zip"
+        
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "::error::File $FILE_PATH tidak ditemukan!"
+          exit 1
+        fi
+        
+        zip "$OUTPUT_FILE" "$FILE_PATH"
+        echo "OUTPUT_FILE=$OUTPUT_FILE" >> $GITHUB_ENV
+
+    - name: Upload ke GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "release-2"
+        name: "Release 2"
+        files: |
+          ${{ env.OUTPUT_FILE }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
