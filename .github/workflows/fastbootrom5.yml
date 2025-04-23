@@ -66,58 +66,62 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "codename=$CODENAME" >> $GITHUB_OUTPUT
 
-    - name: Download and extract firmware
-      run: |
-        curl -L "${{ github.event.inputs.download_url }}" -o firmware.tgz
-        mkdir -p output
-        tar -xvzf firmware.tgz -C output
-
-    - name: Package and filter assets
-      id: package_assets
+    - name: Check existing assets
+      id: check_assets
       run: |
         TAG="${{ steps.extract_meta.outputs.codename }}-${{ steps.extract_meta.outputs.version }}"
         declare -a NAMES=()
-
-        # Kumpulkan pilihan file
         [[ "${{ github.event.inputs.boot_img }}" == 'true' ]] && NAMES+=("boot.img")
         [[ "${{ github.event.inputs.system_img }}" == 'true' ]] && NAMES+=("system.img")
         [[ "${{ github.event.inputs.logo_bin }}" == 'true' ]] && NAMES+=("logo.bin")
         [[ "${{ github.event.inputs.dtbo_img }}" == 'true' ]] && NAMES+=("dtbo.img")
         [[ "${{ github.event.inputs.vbmeta_img }}" == 'true' ]] && NAMES+=("vbmeta.img")
         [[ "${{ github.event.inputs.scatter_txt }}" == 'true' ]] && NAMES+=("scatter.txt")
-
         if [ ${#NAMES[@]} -eq 0 ]; then
           echo "::error::Tidak ada file yang dipilih untuk diproses."
           exit 1
         fi
-
         MISSING=()
         for NAME in "${NAMES[@]}"; do
           ZIP_NAME="${NAME}_${{ steps.extract_meta.outputs.version }}.zip"
-
-          # Cek asset di GitHub Release
           if curl -s -H "Authorization: token $GITHUB_TOKEN" \
                "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" \
              | jq -e --arg name "$ZIP_NAME" '.assets[] | select(.name == $name)' >/dev/null; then
             echo "⏭️ Skip existing: $ZIP_NAME"
           else
-            FILE_PATH=$(find output -type f -name "$NAME" | head -n1)
-            if [ ! -f "$FILE_PATH" ]; then
-              echo "::error::File $NAME tidak ditemukan dalam firmware"
-              exit 1
-            fi
-            zip "$ZIP_NAME" "$FILE_PATH"
-            MISSING+=("$ZIP_NAME")
+            MISSING+=("$NAME")
           fi
         done
-
         if [ ${#MISSING[@]} -eq 0 ]; then
           echo "Semua asset yang dipilih sudah tersedia di release. Batal."
           exit 1
         fi
-
-        echo "upload_files<<EOF" >> $GITHUB_OUTPUT
+        echo "missing_names<<EOF" >> $GITHUB_OUTPUT
         printf '%s\n' "${MISSING[@]}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Download and extract firmware
+      run: |
+        curl -L "${{ github.event.inputs.download_url }}" -o firmware.tgz
+        mkdir -p output
+        tar -xvzf firmware.tgz -C output
+
+    - name: Package missing assets
+      id: package_assets
+      run: |
+        IFS=$'\n' read -d '' -r -a MISSING <<< "${{ steps.check_assets.outputs.missing_names }}"
+        for NAME in "${MISSING[@]}"; do
+          FILE_PATH=$(find output -type f -name "$NAME" | head -n1)
+          if [ ! -f "$FILE_PATH" ]; then
+            echo "::error::File $NAME tidak ditemukan dalam firmware"
+            exit 1
+          fi
+          ZIP_NAME="${NAME}_${{ steps.extract_meta.outputs.version }}.zip"
+          zip "$ZIP_NAME" "$FILE_PATH"
+          echo "$ZIP_NAME" >> upload_list.txt
+        done
+        echo "upload_files<<EOF" >> $GITHUB_OUTPUT
+        cat upload_list.txt >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Upload ke GitHub Releases
