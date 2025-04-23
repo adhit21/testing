@@ -70,8 +70,8 @@ jobs:
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: "release-2"
-        name: "Release 2"
+        tag_name: "fastboot"
+        name: "fastboot-Exctractor"
         files: |
           ${{ env.OUTPUT_FILE }}
       env:
