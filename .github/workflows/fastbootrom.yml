@@ -84,7 +84,7 @@ jobs:
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: "fastboot"
+        tag_name: ${{ steps.extract_version.outputs.codename }}
         name: ${{ steps.extract_version.outputs.codename }}
         files: |
           ${{ env.OUTPUT_FILE }}
