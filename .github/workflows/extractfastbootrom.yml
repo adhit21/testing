@@ -1,4 +1,4 @@
-name: MIUI Firmware Fastboot Extractor
+name: MIUI Firmware Extractor v3
 
 on:
   workflow_dispatch:
@@ -24,71 +24,48 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4  # Update ke versi terbaru
+      uses: actions/checkout@v3
 
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y unzip zip curl tar tree
-
-    - name: Clean existing files
-      run: |
-        rm -rf output hasil.tgz *.zip  # Bersihkan file sebelumnya
+        sudo apt install -y unzip zip curl tar
 
     - name: Extract version from URL
       id: extract_version
       run: |
         URL="${{ github.event.inputs.download_url }}"
-        # Regex yang lebih komprehensif untuk versi
-        VERSION=$(echo "$URL" | grep -oP '[A-Za-z]+\d+\.\d+\.\d+')
+        VERSION=$(echo "$URL" | sed -n 's|.*/\(V[^/]*\)/.*|\1|p')
         
         if [ -z "$VERSION" ]; then
-          echo "::error::Gagal ekstrak versi dari URL! Format URL tidak valid."
-          echo "Contoh format yang valid: .../V12.0.1.0.QGKMIXM/..."
+          echo "::error::Gagal ekstrak versi dari URL!"
           exit 1
         fi
         
-        echo "version=$VERSION" >> $GITHUB_OUTPUT  # Gunakan metode baru
+        echo "Extracted version: $VERSION"
+        echo "::set-output name=version::${VERSION}"
 
     - name: Download file
       run: |
-        if ! curl -L "${{ github.event.inputs.download_url }}" -o hasil.tgz; then
-          echo "::error::Gagal mengunduh file dari URL!"
-          exit 1
-        fi
-        
-        # Validasi file TGZ
-        if ! tar -tzf hasil.tgz >/dev/null 2>&1; then
-          echo "::error::File hasil.tgz tidak valid atau korup!"
-          exit 1
-        fi
+        curl -L "${{ github.event.inputs.download_url }}" -o input_file.zip
 
     - name: Extract files
       run: |
         mkdir -p output
-        tar -xvzf hasil.tgz -C output
-        tree output  # Tampilkan struktur folder untuk debugging
+        tar -xvzf download.tgz -C output
 
     - name: Package image file
-      id: package
       run: |
-        # Cari file dengan batasan 1 hasil
         FILE_PATH=$(find output -type f -name "${{ github.event.inputs.output_name }}" | head -n1)
+        OUTPUT_FILE="${{ github.event.inputs.output_name }}_${{ steps.extract_version.outputs.version }}.zip"
         
-        if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then
-          echo "::error::File ${{ github.event.inputs.output_name }} tidak ditemukan!"
-          echo "Daftar file yang tersedia:"
-          find output -type f
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "::error::File $FILE_PATH tidak ditemukan!"
           exit 1
         fi
         
-        OUTPUT_FILE="${{ github.event.inputs.output_name }}_${{ steps.extract_version.outputs.version }}.zip"
-        
-        # Zip file tanpa path directory
-        zip -j "$OUTPUT_FILE" "$FILE_PATH"
-        
+        zip "$OUTPUT_FILE" "$FILE_PATH"
         echo "OUTPUT_FILE=$OUTPUT_FILE" >> $GITHUB_ENV
-        echo "::notice::Berhasil membuat package: $OUTPUT_FILE"
 
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
