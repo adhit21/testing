@@ -1,0 +1,97 @@
+name: MIUI Firmware Fastboot Extractor v5
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL file firmware'
+        required: true
+      output_names:
+        description: 'Pilih jenis image, pisahkan dengan koma (contoh: boot.img,logo.bin,dtbo.img)'
+        required: true
+        type: string
+
+jobs:
+  extract-firmware:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y unzip zip curl tar jq
+
+    - name: Extract metadata from URL
+      id: extract_meta
+      run: |
+        URL="${{ github.event.inputs.download_url }}"
+        VERSION=$(echo "$URL" | sed -n 's|.*/\(V[^/]*\)/.*|\1|p')
+        CODENAME=$(echo "$URL" | sed -n 's|.*/\(.*\)_global_images.*|\1|p')
+        if [ -z "$VERSION" ] || [ -z "$CODENAME" ]; then
+          echo "::error::Gagal ekstrak metadata dari URL!"
+          exit 1
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "codename=$CODENAME" >> $GITHUB_OUTPUT
+
+    - name: Download and extract firmware
+      run: |
+        curl -L "${{ github.event.inputs.download_url }}" -o firmware.tgz
+        mkdir -p output
+        tar -xvzf firmware.tgz -C output
+
+    - name: Package and filter assets
+      id: package_assets
+      run: |
+        TAG="${{ steps.extract_meta.outputs.codename }}-${{ steps.extract_meta.outputs.version }}"
+        IFS=',' read -ra NAMES <<< "${{ github.event.inputs.output_names }}"
+        MISSING=()
+
+        # Cek dan zip setiap file
+        for NAME in "${NAMES[@]}"; do
+          NAME=$(echo "$NAME" | xargs)
+          ZIP_NAME="${NAME}_${{ steps.extract_meta.outputs.version }}.zip"
+
+          # Cek asset di release
+          if curl -s -H "Authorization: token $GITHUB_TOKEN" \
+               "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" \
+             | jq -e --arg name "$ZIP_NAME" '.assets[] | select(.name == $name)' >/dev/null; then
+            echo "⏭️ Skip existing: $ZIP_NAME"
+          else
+            FILE_PATH=$(find output -type f -name "$NAME" | head -n1)
+            if [ ! -f "$FILE_PATH" ]; then
+              echo "::error::File $NAME tidak ditemukan dalam firmware"
+              exit 1
+            fi
+            zip "$ZIP_NAME" "$FILE_PATH"
+            MISSING+=("$ZIP_NAME")
+          fi
+        done
+
+        # Jika semua sudah ada
+        if [ ${#MISSING[@]} -eq 0 ]; then
+          echo "Semua asset yang dipilih sudah tersedia di release. Batal."
+          exit 1
+        fi
+
+        # Output list untuk upload
+        echo "upload_files<<EOF" >> $GITHUB_OUTPUT
+        printf '%s\n' "${MISSING[@]}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Upload ke GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "${{ steps.extract_meta.outputs.codename }}-${{ steps.extract_meta.outputs.version }}"
+        name: "${{ steps.extract_meta.outputs.codename }} ${{ steps.extract_meta.outputs.version }}"
+        files: |
+          ${{ steps.package_assets.outputs.upload_files }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        create_release: true
