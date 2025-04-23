@@ -93,10 +93,9 @@ jobs:
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: "v${{ steps.extract_version.outputs.version }}"
-        name: "MIUI ${{ steps.extract_version.outputs.version }}"
-        body: "Extracted ${{ github.event.inputs.output_name }}"
+        tag_name: "release-2"
+        name: "Release 2"
         files: |
           ${{ env.OUTPUT_FILE }}
       env:
-        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}  # Gunakan token default
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
