@@ -68,7 +68,7 @@ jobs:
           # Cek apakah asset dengan nama yang sama sudah ada
           if echo "$RESPONSE" | jq -e --arg name "$ASSET_NAME" '.assets[] | select(.name == $name)' >/dev/null; then
             echo "✅ File $ASSET_NAME sudah tersedia. Proses dibatalkan."
-            exit 0
+            exit 1
           else
             echo "Asset $ASSET_NAME belum ada di release $TAG, lanjut proses."
           fi
