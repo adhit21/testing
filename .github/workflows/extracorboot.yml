@@ -4,11 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       download_url:
-        description: 'URL file untuk diproses'
+        description: 'URL file firmware'
         required: true
       output_name:
-        description: 'pilih system.img,boot.img,logo.img'
+        description: 'Pilih jenis image'
+        type: choice
         required: true
+        options:
+          - system.img
+          - boot.img
+          - logo.bin
+          - dtbo.img
+          - vbmeta.img
+          - scatter.txt
 
 jobs:
   extract-firmware:
@@ -33,11 +41,12 @@ jobs:
 
     - name: Package image file
       run: |
-        if [ ! -f "output/${{ github.event.inputs.output_name }}" ]; then
-          echo "Error: File ${{ github.event.inputs.output_name }} tidak ditemukan!"
+        FILE_PATH="output/${{ github.event.inputs.output_name }}"
+        if [ ! -f "$FILE_PATH" ]; then
+          echo "::error::File $FILE_PATH tidak ditemukan!"
           exit 1
         fi
-        zip "${{ github.event.inputs.output_name }}.zip" "output/${{ github.event.inputs.output_name }}"
+        zip "${{ github.event.inputs.output_name }}.zip" "$FILE_PATH"
 
     - name: Upload ke GitHub Releases
       uses: softprops/action-gh-release@v1
