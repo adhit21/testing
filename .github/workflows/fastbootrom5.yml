@@ -6,10 +6,37 @@ on:
       download_url:
         description: 'URL file firmware'
         required: true
-      output_names:
-        description: 'Pilih jenis image, pisahkan dengan koma (contoh: boot.img,logo.bin,dtbo.img)'
-        required: true
         type: string
+      boot_img:
+        description: 'Include boot.img?'
+        required: false
+        default: false
+        type: boolean
+      system_img:
+        description: 'Include system.img?'
+        required: false
+        default: false
+        type: boolean
+      logo_bin:
+        description: 'Include logo.bin?'
+        required: false
+        default: false
+        type: boolean
+      dtbo_img:
+        description: 'Include dtbo.img?'
+        required: false
+        default: false
+        type: boolean
+      vbmeta_img:
+        description: 'Include vbmeta.img?'
+        required: false
+        default: false
+        type: boolean
+      scatter_txt:
+        description: 'Include scatter.txt?'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   extract-firmware:
@@ -49,15 +76,26 @@ jobs:
       id: package_assets
       run: |
         TAG="${{ steps.extract_meta.outputs.codename }}-${{ steps.extract_meta.outputs.version }}"
-        IFS=',' read -ra NAMES <<< "${{ github.event.inputs.output_names }}"
-        MISSING=()
+        declare -a NAMES=()
 
-        # Cek dan zip setiap file
+        # Kumpulkan pilihan file
+        [[ "${{ github.event.inputs.boot_img }}" == 'true' ]] && NAMES+=("boot.img")
+        [[ "${{ github.event.inputs.system_img }}" == 'true' ]] && NAMES+=("system.img")
+        [[ "${{ github.event.inputs.logo_bin }}" == 'true' ]] && NAMES+=("logo.bin")
+        [[ "${{ github.event.inputs.dtbo_img }}" == 'true' ]] && NAMES+=("dtbo.img")
+        [[ "${{ github.event.inputs.vbmeta_img }}" == 'true' ]] && NAMES+=("vbmeta.img")
+        [[ "${{ github.event.inputs.scatter_txt }}" == 'true' ]] && NAMES+=("scatter.txt")
+
+        if [ ${#NAMES[@]} -eq 0 ]; then
+          echo "::error::Tidak ada file yang dipilih untuk diproses."
+          exit 1
+        fi
+
+        MISSING=()
         for NAME in "${NAMES[@]}"; do
-          NAME=$(echo "$NAME" | xargs)
           ZIP_NAME="${NAME}_${{ steps.extract_meta.outputs.version }}.zip"
 
-          # Cek asset di release
+          # Cek asset di GitHub Release
           if curl -s -H "Authorization: token $GITHUB_TOKEN" \
                "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" \
              | jq -e --arg name "$ZIP_NAME" '.assets[] | select(.name == $name)' >/dev/null; then
@@ -73,13 +111,11 @@ jobs:
           fi
         done
 
-        # Jika semua sudah ada
         if [ ${#MISSING[@]} -eq 0 ]; then
           echo "Semua asset yang dipilih sudah tersedia di release. Batal."
           exit 1
         fi
 
-        # Output list untuk upload
         echo "upload_files<<EOF" >> $GITHUB_OUTPUT
         printf '%s\n' "${MISSING[@]}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
