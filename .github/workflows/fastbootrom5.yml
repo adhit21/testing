@@ -109,7 +109,8 @@ jobs:
     - name: Package missing assets
       id: package_assets
       run: |
-        IFS=$'\n' read -d '' -r -a MISSING <<< "${{ steps.check_assets.outputs.missing_names }}"
+        # Baca daftar nama yang hilang ke array
+        mapfile -t MISSING <<< "${{ steps.check_assets.outputs.missing_names }}"
         for NAME in "${MISSING[@]}"; do
           FILE_PATH=$(find output -type f -name "$NAME" | head -n1)
           if [ ! -f "$FILE_PATH" ]; then
