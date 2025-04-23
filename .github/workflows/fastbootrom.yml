@@ -88,5 +88,9 @@ jobs:
         name: ${{ steps.extract_version.outputs.codename }}
         files: |
           ${{ env.OUTPUT_FILE }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        create_release: true
       env:
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
